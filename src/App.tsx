@@ -1,121 +1,116 @@
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { invoke } from "@tauri-apps/api/core";
+import { lazy, Suspense } from "react";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import { Toaster } from "sonner";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { ThemeProvider } from "@/context/ThemeContext";
+import { PersonaProvider } from "@/context/PersonaContext";
+import { AuthProvider } from "@/components/auth/AuthContext";
+import { WebSocketProvider } from "@/context/WebSocketContext";
+import { SidebarProvider } from "@/components/ui/sidebar";
+import { GlobalNavBar } from "@/components/Global/GlobalNavBar";
+
+// Loading component
+const LoadingScreen = () => (
+  <div className="min-h-screen flex items-center justify-center bg-gray-900">
+    <div className="text-center">
+      <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+      <p className="text-white text-lg">Loading...</p>
+    </div>
+  </div>
+);
+
+// Lazy load pages for better performance
+const GlowDashboard = lazy(() => import("@/pages/Home/GlowDashboard").catch(() => ({
+  default: () => <div className="p-8 text-white">Dashboard unavailable</div>
+})));
+
+const Chat = lazy(() => import("@/pages/Chat/Chat").catch(() => ({
+  default: () => <div className="p-8 text-white">Chat unavailable</div>
+})));
+
+const Personas = lazy(() => import("@/pages/Personas/Personas").catch(() => ({
+  default: () => <div className="p-8 text-white">Personas unavailable</div>
+})));
+
+const SuperpowersPage = lazy(() => import("@/pages/Superpowers/Superpowers").catch(() => ({
+  default: () => <div className="p-8 text-white">Superpowers unavailable</div>
+})));
+
+const Memories = lazy(() => import("@/pages/Memory/Memories").catch(() => ({
+  default: () => <div className="p-8 text-white">Memories unavailable</div>
+})));
+
+const KnowledgeBase = lazy(() => import("@/pages/KnowledgeBase/KnowledgeBase").catch(() => ({
+  default: () => <div className="p-8 text-white">Knowledge Base unavailable</div>
+})));
+
+const LoginPage = lazy(() => import("@/pages/Authentification/LoginPage").catch(() => ({
+  default: () => <div className="p-8 text-white">Login unavailable</div>
+})));
+
+function AppContent() {
+  return (
+    <div className="min-h-screen w-full bg-gray-900">
+      <ErrorBoundary>
+        <GlobalNavBar />
+      </ErrorBoundary>
+      
+      {/* Main content area with padding for fixed navbar */}
+      <main className="pt-16">
+        <ErrorBoundary>
+          <Suspense fallback={<LoadingScreen />}>
+            <Routes>
+              {/* Home / Dashboard */}
+              <Route path="/" element={<GlowDashboard />} />
+              <Route path="/glow-dashboard" element={<GlowDashboard />} />
+              
+              {/* Chat Routes */}
+              <Route path="/chat" element={<Chat />} />
+              <Route path="/chat/:threadId" element={<Chat />} />
+              
+              {/* Auth Routes */}
+              <Route path="/login" element={<LoginPage />} />
+              
+              {/* Personas Routes */}
+              <Route path="/personas" element={<Personas />} />
+              
+              {/* Superpowers Routes */}
+              <Route path="/superpowers" element={<SuperpowersPage />} />
+              
+              {/* Memories & Knowledge Base */}
+              <Route path="/memories" element={<Memories />} />
+              <Route path="/knowledge-base" element={<KnowledgeBase />} />
+              
+              {/* Catch all - redirect to home */}
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </Suspense>
+        </ErrorBoundary>
+      </main>
+      
+      {/* Global Toast Notifications */}
+      <Toaster position="bottom-right" richColors />
+    </div>
+  );
+}
 
 function App() {
-  const [greetMsg, setGreetMsg] = useState("");
-  const [name, setName] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-
-  async function greet() {
-    if (!name.trim()) return;
-    
-    setIsLoading(true);
-    try {
-      const message = await invoke<string>("greet", { name });
-      setGreetMsg(message);
-    } catch (error) {
-      console.error("Failed to greet:", error);
-      setGreetMsg("Failed to connect to Tauri backend");
-    } finally {
-      setIsLoading(false);
-    }
-  }
-
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-8">
-      <div className="max-w-2xl w-full space-y-8">
-        {/* Header */}
-        <div className="text-center space-y-4">
-          <h1 className="text-4xl font-bold tracking-tight">
-            Tauri + shadcn/ui + Tailwind
-          </h1>
-          <p className="text-xl text-muted-foreground">
-            Modern desktop app boilerplate
-          </p>
-          <div className="flex justify-center gap-2">
-            <Badge variant="secondary">Tauri v2</Badge>
-            <Badge variant="secondary">React 18</Badge>
-            <Badge variant="secondary">TypeScript</Badge>
-          </div>
-        </div>
-
-        {/* Demo Card */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Demo</CardTitle>
-            <CardDescription>
-              Test the Tauri backend integration
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex gap-2">
-              <Input
-                placeholder="Enter your name..."
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && greet()}
-              />
-              <Button 
-                onClick={greet} 
-                disabled={isLoading || !name.trim()}
-              >
-                {isLoading ? "..." : "Greet"}
-              </Button>
-            </div>
-            {greetMsg && (
-              <div className="p-3 bg-muted rounded-md">
-                <p className="text-sm">{greetMsg}</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Features */}
-        <div className="grid md:grid-cols-3 gap-4">
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg">⚡ Fast</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <CardDescription>
-                Rust-powered backend with native performance
-              </CardDescription>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg">🎨 Modern</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <CardDescription>
-                Beautiful UI with shadcn/ui and Tailwind CSS
-              </CardDescription>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg">🔐 Secure</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <CardDescription>
-                Memory safety with Rust and Tauri's security model
-              </CardDescription>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Footer */}
-        <div className="text-center text-sm text-muted-foreground">
-          <p>Built with Tauri, React, TypeScript, shadcn/ui, and Tailwind CSS</p>
-        </div>
-      </div>
-    </div>
+    <ErrorBoundary>
+      <Router>
+        <ThemeProvider>
+          <AuthProvider>
+            <PersonaProvider>
+              <WebSocketProvider>
+                <SidebarProvider>
+                  <AppContent />
+                </SidebarProvider>
+              </WebSocketProvider>
+            </PersonaProvider>
+          </AuthProvider>
+        </ThemeProvider>
+      </Router>
+    </ErrorBoundary>
   );
 }
 
